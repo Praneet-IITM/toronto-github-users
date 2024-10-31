@@ -1,0 +1,67 @@
+import requests
+import csv
+
+# Define GitHub API URL for users in Toronto with more than 100 followers
+# Adjust this query as necessary to filter for Toronto-based users with followers > 100
+url = "https://api.github.com/search/users?q=location:Toronto+followers:>100"
+
+# Your GitHub personal access token (replace 'your_token' with your actual token)
+headers = {"Authorization": "token your_token"}
+
+# Function to fetch user data from GitHub API
+def fetch_users(url):
+    users = []
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    
+    # Loop through each user in the response data
+    for user in data['items']:
+        user_data = requests.get(user['url'], headers=headers).json()
+        
+        # Extract and clean up necessary fields for users.csv
+        users.append({
+            "login": user_data.get("login", ""),
+            "name": user_data.get("name", ""),
+            "company": clean_company(user_data.get("company", "")),
+            "location": user_data.get("location", ""),
+            "email": user_data.get("email", ""),
+            "hireable": str(user_data.get("hireable", "")),  # Convert None to empty string
+            "bio": user_data.get("bio", ""),
+            "public_repos": user_data.get("public_repos", 0),
+            "followers": user_data.get("followers", 0),
+            "following": user_data.get("following", 0),
+            "created_at": user_data.get("created_at", "")
+        })
+    return users
+
+# Function to clean up company names
+def clean_company(company_name):
+    if not company_name:
+        return ""
+    company_name = company_name.strip()
+    if company_name.startswith("@"):
+        company_name = company_name[1:]  # Remove leading @ symbol
+    return company_name.upper()
+
+# Function to write data to users.csv
+def write_to_csv(users, filename="users.csv"):
+    # Define the CSV headers
+    headers = [
+        "login", "name", "company", "location", "email", "hireable", 
+        "bio", "public_repos", "followers", "following", "created_at"
+    ]
+    
+    # Write to CSV file
+    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=headers)
+        writer.writeheader()
+        for user in users:
+            writer.writerow(user)
+
+# Fetch and save users
+users_data = fetch_users(url)
+write_to_csv(users_data)
+
+print("users.csv file created successfully!")
+
+              
